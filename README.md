@@ -1,3 +1,264 @@
+# SQL Analysis (PostgreSQL)
+
+Before applying the territory optimization algorithm, the hospital dataset was explored using PostgreSQL to understand workload distribution, hospital types, and city-wise patterns. These SQL queries demonstrate data analysis skills ranging from beginner to advanced.
+
+---
+
+## 0. Create Table
+
+```sql
+CREATE TABLE hospitals (
+    hospital_id VARCHAR(20) PRIMARY KEY,
+    latitude DECIMAL(10,6),
+    longitude DECIMAL(10,6),
+    city_cluster VARCHAR(50),
+    hospital_type VARCHAR(50),
+    monthly_workload INT
+);
+```
+
+---
+
+# Beginner Queries
+
+## 1. View all records
+```sql
+SELECT * FROM hospitals;
+```
+
+## 2. Count total hospitals
+```sql
+SELECT COUNT(*) AS total_hospitals FROM hospitals;
+```
+
+## 3. List hospital types
+```sql
+SELECT DISTINCT hospital_type FROM hospitals;
+```
+
+## 4. Count hospitals by type
+```sql
+SELECT hospital_type, COUNT(*) total_hospitals
+FROM hospitals
+GROUP BY hospital_type
+ORDER BY total_hospitals DESC;
+```
+
+## 5. Average monthly workload
+```sql
+SELECT ROUND(AVG(monthly_workload),2) avg_workload
+FROM hospitals;
+```
+
+## 6. Top 10 busiest hospitals
+```sql
+SELECT hospital_id,hospital_type,monthly_workload
+FROM hospitals
+ORDER BY monthly_workload DESC
+LIMIT 10;
+```
+
+# Intermediate Queries
+
+## 7. Average workload by hospital type
+```sql
+SELECT hospital_type, ROUND(AVG(monthly_workload),2) avg_workload
+FROM hospitals
+GROUP BY hospital_type
+ORDER BY avg_workload DESC;
+```
+
+## 8. Total workload by hospital type
+```sql
+SELECT hospital_type,SUM(monthly_workload) total_workload
+FROM hospitals
+GROUP BY hospital_type
+ORDER BY total_workload DESC;
+```
+
+## 9. Hospitals in each city
+```sql
+SELECT city_cluster,COUNT(*) hospitals
+FROM hospitals
+GROUP BY city_cluster
+ORDER BY hospitals DESC;
+```
+
+## 10. Total workload by city
+```sql
+SELECT city_cluster,SUM(monthly_workload) total_workload
+FROM hospitals
+GROUP BY city_cluster
+ORDER BY total_workload DESC;
+```
+
+## 11. Average workload by city
+```sql
+SELECT city_cluster,ROUND(AVG(monthly_workload),2) avg_workload
+FROM hospitals
+GROUP BY city_cluster
+ORDER BY avg_workload DESC;
+```
+
+## 12. Hospitals above overall average workload
+```sql
+SELECT hospital_id,hospital_type,monthly_workload
+FROM hospitals
+WHERE monthly_workload>(
+SELECT AVG(monthly_workload) FROM hospitals)
+ORDER BY monthly_workload DESC;
+```
+
+# Advanced Queries
+
+## 13. Rank hospitals by workload
+```sql
+SELECT hospital_id,hospital_type,monthly_workload,
+RANK() OVER(ORDER BY monthly_workload DESC) workload_rank
+FROM hospitals;
+```
+
+## 14. Top 3 busiest hospitals in every city
+```sql
+SELECT *
+FROM(
+SELECT *,
+ROW_NUMBER() OVER(PARTITION BY city_cluster
+ORDER BY monthly_workload DESC) rn
+FROM hospitals
+)t
+WHERE rn<=3;
+```
+
+## 15. Percentage contribution of each hospital type
+```sql
+SELECT hospital_type,
+SUM(monthly_workload) workload,
+ROUND(
+100.0*SUM(monthly_workload)/
+SUM(SUM(monthly_workload)) OVER(),2
+) workload_percentage
+FROM hospitals
+GROUP BY hospital_type
+ORDER BY workload_percentage DESC;
+```
+
+## 16. Categorize hospitals by workload
+```sql
+SELECT hospital_id,
+monthly_workload,
+CASE
+WHEN monthly_workload>=60 THEN 'High'
+WHEN monthly_workload>=30 THEN 'Medium'
+ELSE 'Low'
+END workload_category
+FROM hospitals;
+```
+
+## 17. Running workload within each city
+```sql
+SELECT city_cluster,
+hospital_id,
+monthly_workload,
+SUM(monthly_workload)
+OVER(PARTITION BY city_cluster
+ORDER BY monthly_workload DESC)
+AS cumulative_workload
+FROM hospitals;
+```
+
+## 18. Compare each hospital with city average
+```sql
+SELECT hospital_id,
+city_cluster,
+monthly_workload,
+ROUND(AVG(monthly_workload)
+OVER(PARTITION BY city_cluster),2)
+AS city_average,
+monthly_workload-
+AVG(monthly_workload)
+OVER(PARTITION BY city_cluster)
+AS difference
+FROM hospitals;
+```
+
+## 19. Divide hospitals into workload quartiles
+```sql
+SELECT hospital_id,
+monthly_workload,
+NTILE(4)
+OVER(ORDER BY monthly_workload DESC)
+AS workload_quartile
+FROM hospitals;
+```
+
+## 20. Cities above overall average workload
+```sql
+SELECT city_cluster,
+ROUND(AVG(monthly_workload),2) avg_workload
+FROM hospitals
+GROUP BY city_cluster
+HAVING AVG(monthly_workload)>
+(SELECT AVG(monthly_workload) FROM hospitals)
+ORDER BY avg_workload DESC;
+```
+
+# Conclusion
+
+These SQL analyses were performed before the optimization stage to understand the distribution of hospitals, workload imbalance, and geographic patterns. The insights obtained through SQL complemented the Python-based territory optimization pipeline by validating the dataset and identifying workload characteristics prior to clustering and capacity-constrained optimization.
+
+### Top 10 Most Improved Representatives
+
+```sql
+SELECT
+b.rep_id,
+b.total_workload before_workload,
+a.total_workload after_workload,
+b.total_workload-a.total_workload workload_reduction
+FROM before_summary_by_rep b
+JOIN after_summary_by_rep a
+ON b.rep_id=a.rep_id
+ORDER BY workload_reduction DESC
+LIMIT 10;
+```
+
+---
+
+### Travel Distance Reduction
+
+```sql
+SELECT
+ROUND(AVG(b.avg_distance_km),2) before_distance,
+ROUND(AVG(a.avg_distance_km),2) after_distance
+FROM before_summary_by_rep b
+JOIN after_summary_by_rep a
+ON b.rep_id=a.rep_id;
+```
+
+---
+
+### Representatives Whose Workload Increased
+
+```sql
+SELECT
+rep_id,
+before_workload,
+after_workload
+FROM
+(
+SELECT
+b.rep_id,
+b.total_workload before_workload,
+a.total_workload after_workload
+FROM before_summary_by_rep b
+JOIN after_summary_by_rep a
+ON b.rep_id=a.rep_id
+)t
+WHERE after_workload>before_workload;
+```
+
+---
+
 # Sales Territory Optimization
 
 Balance a 200-rep sales force so no rep is overloaded and no rep is
