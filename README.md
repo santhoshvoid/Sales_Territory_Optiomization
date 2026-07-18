@@ -1,3 +1,5 @@
+<img width="1536" height="900" alt="img" src="https://github.com/user-attachments/assets/6bf0bb29-91ed-494a-8678-be5946ffbc90" />
+
 # SQL Analysis (PostgreSQL)
 
 Before applying the territory optimization algorithm, the hospital dataset was explored using PostgreSQL to understand workload distribution, hospital types, and city-wise patterns. These SQL queries demonstrate data analysis skills ranging from beginner to advanced.
@@ -475,24 +477,7 @@ and plots to `outputs/`.
 - **Python** — orchestration
 - **scikit-learn** (`KMeans`) — geographic clustering / territory seeding
 - **pandas / numpy** — data wrangling, workload aggregation
-- **scipy** (`cKDTree`) — fast nearest-center lookup at scale
 - **matplotlib** — before/after visualization
 - Haversine formula (hand-rolled, vectorized) — real great-circle
   distance in km, not Euclidean, since lat/lon isn't a flat plane
 
-## 9. Extensions this project deliberately leaves out (but would mention in an interview)
-
-- **Travel-time instead of straight-line distance** — swap the Haversine
-  distance for a road-network travel-time matrix (e.g. via OSRM or Google
-  Distance Matrix API) for a production version; contiguous, drivable
-  territories matter more than raw km.
-- **Contiguity / compactness constraints** — real territory design also
-  cares about *shape* (no doughnut-shaped or exclave territories), which
-  would need a graph-partitioning step (e.g. spatially constrained
-  agglomerative clustering) on top of this.
-- **Multi-period stability** — minimizing *disruption* from the current
-  territory map (rep relationships with accounts matter commercially), by
-  adding a "cost to reassign" penalty for accounts changing reps.
-- **Rep skill/seniority matching** — some hospitals (e.g. teaching
-  hospitals) may need senior reps; that's an additional constraint, not
-  just geography + workload.
