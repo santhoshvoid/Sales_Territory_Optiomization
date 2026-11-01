@@ -29,6 +29,7 @@ The project uses a **synthetic hospital dataset** to model a healthcare-oriented
 - [4. Optimisation approach](#4-optimisation-approach)
 - [5. Results](#5-results)
 - [6. Visual results](#6-visual-results)
+  - [6.1 Power BI dashboard](#61-power-bi-dashboard)
 - [7. SQL analysis with PostgreSQL](#7-sql-analysis-with-postgresql)
   - [7.1 Create the hospitals table](#71-create-the-hospitals-table)
   - [7.2 Beginner queries](#72-beginner-queries)
@@ -153,17 +154,17 @@ The following results are from the project's reported synthetic run with 1,200 h
 
 | Metric | Before | After | Change |
 |---|---:|---:|---:|
-| Hospitals per representative (standard deviation) | 3.3 | 2.1 | 36% lower |
-| Workload per representative (standard deviation) | 105.5 | 29.0 | 72% lower |
-| Workload coefficient of variation | 0.608 | 0.167 | 73% lower |
-| Average hospital-to-representative-centre distance | 171.5 km | 19.1 km | 89% lower |
-| Representatives more than 30% above average workload | 55 / 200 | 50 / 200 | 5 fewer |
+| Hospitals per representative (standard deviation) | 3.31 | 2.15 | 35.2% lower |
+| Workload per representative (standard deviation) | 105.48 | 29.04 | 72.5% lower |
+| Workload coefficient of variation | 0.608 | 0.167 | 72.5% lower |
+| Average hospital-to-representative-centre distance | 171.50 km | 19.15 km | 88.8% lower |
+| Representatives with more than 30% above-average hospital count | 55 / 200 | 50 / 200 | 5 fewer |
 
 ### How to interpret the results
 
 - The reduction in workload standard deviation and coefficient of variation indicates a more even workload distribution in this synthetic run.
 - The average distance metric is the **Haversine straight-line distance from each hospital to its assigned representative centre**. It is not road-network distance, travel time, or a route-optimisation result.
-- The count of representatives more than 30% above average workload changes from 55 to 50. This is a modest improvement and should not be described as eliminating high-workload representatives.
+- The count of representatives with more than 30% above-average **hospital count** changes from 55 to 50. This is a modest improvement in account-count concentration; it is not a workload-threshold metric and should not be described as eliminating overloaded representatives.
 - The results are relative to the intentionally unbalanced synthetic baseline described above. A different baseline, dataset, workload definition, or tolerance can produce different results.
 
 > **Metric validation note:** The reported count of representatives above the 30%-over-average threshold should be checked against the generated output files and the configured capacity constraint before being used as a headline result. The threshold count does not fall in line with the other reported workload-dispersion metrics, so it is presented transparently rather than used to claim a large reduction.
@@ -187,6 +188,24 @@ The repository's generated plots provide a before-and-after view of the assignme
 ![Workload distribution boxplot](outputs/plots/workload_boxplot.png)
 
 The workload distribution plots are particularly useful for assessing whether the optimisation reduces variation between representatives. The maps help inspect how the assignments change geographically.
+
+### 6.1 Power BI dashboard
+
+The project also includes a one-page Power BI report for reviewing the before-and-after results and inspecting representative-level metrics. The report is built from the generated project outputs and a prepared CSV data layer; it does not use real hospital or client data.
+
+![Power BI dashboard preview](docs/images/powerbi_dashboard.png)
+
+The dashboard contains:
+
+- **KPI cards:** 1,200 hospitals, 200 representatives, 72.5% reduction in workload standard deviation, and 88.8% reduction in mean hospital-to-representative-centre distance.
+- **Workload comparison:** before-and-after workload standard deviation by scenario.
+- **Distance comparison:** before-and-after mean hospital-level straight-line distance by scenario.
+- **Scenario slicer:** switches the representative table between the `Before` and `After` assignments. With neither scenario selected, the table displays both sets of representative rows.
+- **Representative performance table:** hospital count, total workload, average assigned-hospital distance, and capacity-target utilisation for each representative.
+
+**Capacity-target utilisation** is a derived reporting metric: representative total workload divided by the equal-share workload target with the project’s 8% capacity tolerance. It is a simulated capacity indicator, not a measure of actual employee productivity.
+
+The dashboard’s distance KPI uses the 1,200 hospital-level assignment distances in each scenario. It is a Haversine straight-line distance, not road distance or travel time. The report is stored at `powerbi/Sales_Territory_Optimization.pbix`; open it with Power BI Desktop. The imported data is saved in the report model, but refreshing data on another computer may require reconnecting the original CSV source paths.
 
 ## 7. SQL analysis with PostgreSQL
 
@@ -512,6 +531,12 @@ sales_territory_optimization/
 ├── main.py                         # Run the before-and-after pipeline
 ├── data/
 │   └── hospitals.csv               # Generated synthetic hospital accounts
+├── docs/
+│   └── images/
+│       └── powerbi_dashboard.png   # Power BI dashboard preview
+├── powerbi/
+│   ├── README.md                   # Report notes and opening instructions
+│   └── Sales_Territory_Optimization.pbix  # Power BI Desktop report
 ├── src/
 │   ├── data_generator.py           # Synthetic data and baseline assignment
 │   ├── territory_optimizer.py      # Clustering and capacity-aware balancing
@@ -548,6 +573,10 @@ The script runs the synthetic before-and-after assignment workflow, prints summa
 
 Inspect the generated assignment files and plots in `outputs/`. The SQL examples in this README can be run after loading the relevant generated data and summary tables into PostgreSQL.
 
+### 4. Open the Power BI report
+
+Open `powerbi/Sales_Territory_Optimization.pbix` with Power BI Desktop. The report contains an imported snapshot of the prepared dashboard data. To refresh it after regenerating project outputs, recreate or update the Power BI import CSVs and reconnect the report to their new file locations if Power BI prompts for them.
+
 ## 10. Technology stack
 
 - **Python** — pipeline orchestration and optimisation workflow.
@@ -555,7 +584,7 @@ Inspect the generated assignment files and plots in `outputs/`. The SQL examples
 - **scikit-learn (`KMeans`)** — geographic clustering and initial territory seeding.
 - **PostgreSQL** — exploratory analysis, aggregation, ranking, and before-and-after validation queries.
 - **Matplotlib** — territory maps and before-and-after distribution plots.
-- **Power BI, Power Query, and DAX** — interactive analysis of territory workload, representative utilisation, and distance metrics.
+- **Power BI Desktop and DAX** — CSV-based KPI cards, before-and-after comparison charts, a scenario slicer, and representative-level performance table.
 - **Haversine distance** — vectorised great-circle distance calculation between geographic coordinates.
 
 ## 11. Assumptions and limitations
@@ -566,7 +595,7 @@ Inspect the generated assignment files and plots in `outputs/`. The SQL examples
 - **Distance approximation:** the Haversine calculation measures straight-line distance to a representative centre. It does not account for road networks, traffic, travel time, visit schedules, or routing constraints.
 - **Heuristic optimisation:** the assignment and centre-update process is a practical heuristic. It does not guarantee a globally optimal solution.
 - **Business constraints:** a production implementation could require additional constraints such as representative skills, account priorities, visit frequency, territory boundaries, working hours, or contractual restrictions.
-- **Reported threshold metric:** the number of representatives above the 30%-over-average workload threshold changes only from 55 to 50 in the reported run. This metric should be validated against the generated outputs and configured capacity logic before being used to support a stronger claim.
+- **Hospital-count threshold metric:** the number of representatives with more than 130% of the average hospital count changes from 55 to 50 in the reported run. This is an account-count concentration metric, not a workload-threshold metric.
 
 ---
 
